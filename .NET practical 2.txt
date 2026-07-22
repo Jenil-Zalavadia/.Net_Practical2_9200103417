@@ -1,0 +1,162 @@
+using System;
+using System.Collections.Generic;
+
+public interface IWorkplacePolicies
+{
+    void DisplayCodeOfConduct();
+    bool RequestLeave(int daysRequested);
+}
+
+public abstract class Employee : IWorkplacePolicies
+{
+    public int EmployeeId { get; private set; }
+    public string Name { get; private set; }
+    public int AvailableLeaves { get; protected set; }
+
+    public Employee(int id, string name)
+    {
+        EmployeeId = id;
+        Name = name;
+    }
+
+    public abstract decimal CalculatePay();
+    
+    public abstract void EvaluateAttendance(); 
+
+    public void DisplayCodeOfConduct()
+    {
+        Console.WriteLine($"{Name} agrees to the NDA, Data Security, and Anti-Harassment policies.");
+    }
+
+    public virtual bool RequestLeave(int daysRequested)
+    {
+        if (daysRequested <= AvailableLeaves)
+        {
+            AvailableLeaves -= daysRequested;
+            Console.WriteLine($"[APPROVED] {Name} took {daysRequested} day(s) off. Remaining leaves: {AvailableLeaves}");
+            return true;
+        }
+        
+        Console.WriteLine($"[DENIED] {Name} requested {daysRequested} day(s) off, but only has {AvailableLeaves} available.");
+        return false;
+    }
+}
+
+public class FullTimeEmployee : Employee
+{
+    public decimal MonthlyBaseSalary { get; set; }
+    public decimal PerformanceBonus { get; set; }
+    public int UnapprovedAbsences { get; set; } // NEW: Tracks irregular behavior
+
+    public FullTimeEmployee(int id, string name, decimal salary, decimal bonus, int absences) 
+        : base(id, name)
+    {
+        MonthlyBaseSalary = salary;
+        PerformanceBonus = bonus;
+        UnapprovedAbsences = absences;
+        AvailableLeaves = 20; 
+    }
+
+    public override decimal CalculatePay()
+    {
+        return MonthlyBaseSalary + PerformanceBonus;
+    }
+
+    public override void EvaluateAttendance()
+    {
+        if (UnapprovedAbsences > 3)
+        {
+            Console.WriteLine($"[SUSPENSION WARNING] {Name} has {UnapprovedAbsences} unapproved absences. HR disciplinary action required.");
+        }
+        else
+        {
+            Console.WriteLine($"[ATTENDANCE OK] {Name}'s attendance is satisfactory.");
+        }
+    }
+}
+
+public class ContractEmployee : Employee
+{
+    public decimal HourlyRate { get; set; }
+    public int HoursWorked { get; set; }
+
+    public ContractEmployee(int id, string name, decimal hourlyRate, int hoursWorked) 
+        : base(id, name)
+    {
+        HourlyRate = hourlyRate;
+        HoursWorked = hoursWorked;
+        AvailableLeaves = 0; 
+    }
+
+    public override decimal CalculatePay()
+    {
+        int standardHours = 160; 
+        
+        if (HoursWorked > standardHours)
+        {
+            int overtimeHours = HoursWorked - standardHours;
+            decimal standardPay = standardHours * HourlyRate;
+            decimal overtimePay = overtimeHours * (HourlyRate * 1.5m); 
+            return standardPay + overtimePay;
+        }
+        
+        return HoursWorked * HourlyRate;
+    }
+
+    public override void EvaluateAttendance()
+    {
+        int minimumRequiredHours = 80;
+        
+        if (HoursWorked < minimumRequiredHours)
+        {
+            Console.WriteLine($"[SUSPENSION WARNING] {Name} logged only {HoursWorked} hours. Minimum requirement is {minimumRequiredHours} hours/month to maintain contract.");
+        }
+        else
+        {
+            Console.WriteLine($"[ATTENDANCE OK] {Name} meets the minimum hourly requirements.");
+        }
+    }
+}
+
+public class PayrollSystem
+{
+    public static void Main()
+    {
+        Console.WriteLine("--- ADD NEW CONTRACT EMPLOYEE ---");
+
+        Console.Write("Enter Employee Name: ");
+        string name = Console.ReadLine();
+
+        Console.Write("Enter Employee ID: ");
+        int id;
+        while (!int.TryParse(Console.ReadLine(), out id))
+        {
+            Console.Write("Invalid input. Please enter a number for the ID: ");
+        }
+
+        Console.Write("Enter Hourly Rate ($): ");
+        decimal rate;
+        while (!decimal.TryParse(Console.ReadLine(), out rate))
+        {
+            Console.Write("Invalid input. Please enter a valid decimal number for the rate: ");
+        }
+
+        Console.Write("Enter Hours Worked this month: ");
+        int hours;
+        while (!int.TryParse(Console.ReadLine(), out hours))
+        {
+            Console.Write("Invalid input. Please enter a whole number for hours: ");
+        }
+        
+        ContractEmployee newEmployee = new ContractEmployee(id, name, rate, hours);
+
+        Console.WriteLine("\n--- MONTHLY REPORT ---");
+        Console.WriteLine($"Employee: {newEmployee.Name} (ID: {newEmployee.EmployeeId})");
+        
+        newEmployee.DisplayCodeOfConduct();
+        
+        newEmployee.EvaluateAttendance(); 
+
+        Console.WriteLine($"Total Pay: ${newEmployee.CalculatePay():0.00}");
+    }
+}
